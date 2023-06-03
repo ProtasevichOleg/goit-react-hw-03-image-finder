@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Layout from './layout';
-import axios from 'axios';
 import { ThreeDots } from 'react-loader-spinner';
 
 import Searchbar from './Searchbar';
@@ -12,9 +11,7 @@ import Modal from './Modal';
 import { LoaderWrapper } from './App.styled';
 import Swal from 'sweetalert2';
 
-const BASE_URL = 'https://pixabay.com/api/';
-const API_KEY = '18445929-e575d6623fb59f5ed7bcd7f03';
-const PER_PAGE = 12;
+import { fetchImages } from 'utils/api';
 const MAX_IMAGES = 500;
 
 class App extends React.Component {
@@ -30,24 +27,22 @@ class App extends React.Component {
     hasMoreImages: true,
   };
 
-  componentDidUpdate(prevProps, { searchQuery: prevSearchQuery }) {
+  componentDidUpdate(prevProps, prevState) {
     const { searchQuery } = this.state;
-    if (prevSearchQuery !== searchQuery) {
+    if (prevState.searchQuery !== searchQuery) {
       this.fetchImages();
     }
   }
 
-  fetchImages = async () => {
-    const { images, searchQuery, currentPage } = this.state;
+  fetchImages = async (page = this.state.currentPage) => {
+    const { images, searchQuery } = this.state;
     this.setState({ loading: true });
 
     try {
       if (images.length < MAX_IMAGES) {
-        const response = await axios.get(
-          `${BASE_URL}?q=${searchQuery}&page=${currentPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=${PER_PAGE}`
-        );
+        const data = await fetchImages(searchQuery, page);
 
-        if (response.data.hits.length === 0) {
+        if (data.length === 0) {
           Swal.fire({
             icon: 'warning',
             title: 'Oops...',
@@ -58,15 +53,12 @@ class App extends React.Component {
           return;
         }
         this.setState(prevState => {
-          const newImages = [...prevState.images, ...response.data.hits];
-          const newCurrentPage = prevState.currentPage + 1;
-          const hasMoreImages =
-            response.data.hits.length === PER_PAGE &&
-            newImages.length < MAX_IMAGES;
+          const newImages = [...prevState.images, ...data];
+          const hasMoreImages = newImages.length < MAX_IMAGES;
           return {
             images: newImages,
-            currentPage: newCurrentPage,
             hasMoreImages,
+            currentPage: page,
           };
         });
       } else {
@@ -103,6 +95,7 @@ class App extends React.Component {
         images: [],
         currentPage: 1,
         error: null,
+        hasMoreImages: true,
       });
     } else {
       Swal.fire({
@@ -112,6 +105,10 @@ class App extends React.Component {
         timer: 3000,
       });
     }
+  };
+
+  loadMoreImages = () => {
+    this.fetchImages(this.state.currentPage + 1);
   };
 
   openModal = image => {
@@ -146,7 +143,7 @@ class App extends React.Component {
       },
       handleSearchSubmit,
       openModal,
-      fetchImages,
+      loadMoreImages,
       closeModal,
       handleImageLoad,
     } = this;
@@ -164,7 +161,7 @@ class App extends React.Component {
           </LoaderWrapper>
         )}
         {!loading && images.length > 0 && hasMoreImages && (
-          <Button onClick={fetchImages} />
+          <Button onClick={loadMoreImages} />
         )}
 
         {showModal && (
