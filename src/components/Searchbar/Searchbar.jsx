@@ -1,7 +1,8 @@
-// Searchbar.jsx
-
-import React from 'react';
+import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import { faSearch } from '@fortawesome/free-solid-svg-icons';
+
+import showMessage from 'utils/swalConfig';
 import {
   SearchbarHeader,
   SearchForm,
@@ -10,9 +11,8 @@ import {
   SearchInput,
   StyledIcon,
 } from './Searchbar.styled';
-import { faSearch } from '@fortawesome/free-solid-svg-icons';
 
-class Searchbar extends React.Component {
+class Searchbar extends Component {
   state = {
     inputValue: '',
   };
@@ -26,6 +26,11 @@ class Searchbar extends React.Component {
     const { onSubmit } = this.props;
     const { inputValue } = this.state;
 
+    if (inputValue.trim() === '') {
+      return showMessage(
+        'Search query cannot be empty. Please enter a valid search query.'
+      );
+    }
     onSubmit(inputValue);
     this.setState({ inputValue: '' });
   };
@@ -33,9 +38,11 @@ class Searchbar extends React.Component {
   render() {
     const { inputValue } = this.state;
     const { isSubmitting } = this.props;
+    const { handleSubmit, handleChange } = this;
+
     return (
       <SearchbarHeader>
-        <SearchForm onSubmit={this.handleSubmit}>
+        <SearchForm onSubmit={handleSubmit}>
           <SearchButton disabled={isSubmitting} type="submit">
             <StyledIcon icon={faSearch} />
             <SearchButtonLabel>Search</SearchButtonLabel>
@@ -47,7 +54,7 @@ class Searchbar extends React.Component {
             autoFocus
             placeholder="Search images and photos"
             value={inputValue}
-            onChange={this.handleChange}
+            onChange={handleChange}
           />
         </SearchForm>
       </SearchbarHeader>

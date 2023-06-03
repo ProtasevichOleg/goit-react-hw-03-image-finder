@@ -1,11 +1,9 @@
-// ImageGallery.jsx
-
-import React from 'react';
 import PropTypes from 'prop-types';
+
 import { ImageList } from './ImageGallery.styled';
 import ImageGalleryItem from '../ImageGalleryItem';
 
-const ImageGallery = ({ images, onImageClick, loading }) => (
+const ImageGallery = ({ images, onImageClick }) => (
   <ImageList>
     {images.map(image => (
       <ImageGalleryItem

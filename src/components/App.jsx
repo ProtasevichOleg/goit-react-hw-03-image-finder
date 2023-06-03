@@ -1,20 +1,17 @@
-// App.jsx
+import React, { Component } from 'react';
 
-import React from 'react';
+import fetchImages from 'utils/api';
+import showMessage from 'utils/swalConfig';
+
 import Layout from './layout';
-import { ThreeDots } from 'react-loader-spinner';
-
 import Searchbar from './Searchbar';
 import ImageGallery from './ImageGallery';
 import Button from './Button';
 import Modal from './Modal';
-import { LoaderWrapper } from './App.styled';
-import Swal from 'sweetalert2';
+import Spinner from './Spinner';
+import { SpinnerWrapper } from './App.styled';
 
-import { fetchImages } from 'utils/api';
-const MAX_IMAGES = 500;
-
-class App extends React.Component {
+class App extends Component {
   state = {
     images: [],
     loading: false,
@@ -25,97 +22,62 @@ class App extends React.Component {
     showModal: false,
     isLargeImageLoaded: false,
     hasMoreImages: true,
+    total: 0,
   };
 
-  componentDidUpdate(prevProps, prevState) {
-    const { searchQuery } = this.state;
-    if (prevState.searchQuery !== searchQuery) {
-      this.fetchImages();
+  componentDidUpdate(_, prevState) {
+    const { searchQuery, currentPage } = this.state;
+    const prevPage = prevState.currentPage;
+    const prevQuery = prevState.searchQuery;
+
+    if (prevQuery !== searchQuery || prevPage !== currentPage) {
+      this.fetchImages(searchQuery, currentPage);
     }
   }
 
-  fetchImages = async (page = this.state.currentPage) => {
-    const { images, searchQuery } = this.state;
+  fetchImages = async (searchQuery, currentPage) => {
     this.setState({ loading: true });
 
     try {
-      if (images.length < MAX_IMAGES) {
-        const data = await fetchImages(searchQuery, page);
+      const { hits, totalHits } = await fetchImages(searchQuery, currentPage);
 
-        if (data.length === 0) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Oops...',
-            text: `No images found for ${searchQuery}. Please try another query.`,
-            timer: 3000,
-          });
-          this.setState({ loading: false });
-          return;
-        }
-        this.setState(prevState => {
-          const newImages = [...prevState.images, ...data];
-          const hasMoreImages = newImages.length < MAX_IMAGES;
-          return {
-            images: newImages,
-            hasMoreImages,
-            currentPage: page,
-          };
-        });
-      } else {
-        this.setState({ hasMoreImages: false });
+      if (hits.length === 0) {
+        return showMessage(
+          `No images found for ${searchQuery}. Please try another query.`
+        );
       }
+
+      this.setState(prevState => ({
+        images: [...prevState.images, ...hits],
+        total: totalHits,
+      }));
     } catch (error) {
-      if (error.response && error.response.status === 400) {
-        this.setState({ hasMoreImages: false });
-      } else {
-        this.setState({ error: true });
-      }
+      this.setState({ error: error.message });
     } finally {
       this.setState({ loading: false });
     }
   };
 
   handleSearchSubmit = newQuery => {
-    const trimmedNewQuery = newQuery.trim();
-    const { searchQuery } = this.state;
-
-    if (trimmedNewQuery.length === 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Oops...',
-        text: 'Search query cannot be empty. Please enter a valid search query.',
-        timer: 3000,
-      });
-      return;
+    if (newQuery === this.state.searchQuery) {
+      return showMessage(
+        'You entered the same search query. Please enter a new one.'
+      );
     }
 
-    if (trimmedNewQuery !== searchQuery) {
-      this.setState({
-        searchQuery: trimmedNewQuery,
-        images: [],
-        currentPage: 1,
-        error: null,
-        hasMoreImages: true,
-      });
-    } else {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Oops...',
-        text: 'You entered the same search query. Please enter a new one.',
-        timer: 3000,
-      });
-    }
+    this.setState({
+      searchQuery: newQuery,
+      currentPage: 1,
+      images: [],
+    });
   };
 
   loadMoreImages = () => {
-    this.fetchImages(this.state.currentPage + 1);
+    this.setState(prevState => ({ currentPage: prevState.currentPage + 1 }));
   };
 
   openModal = image => {
-    this.setState({
-      largeImage: image,
-      showModal: true,
-    });
+    this.setState({ largeImage: image, showModal: true });
   };
 
   closeModal = () => {
@@ -132,15 +94,17 @@ class App extends React.Component {
 
   render() {
     const {
-      state: {
-        images,
-        loading,
-        error,
-        largeImage,
-        showModal,
-        isLargeImageLoaded,
-        hasMoreImages,
-      },
+      images,
+      loading,
+      error,
+      largeImage,
+      showModal,
+      isLargeImageLoaded,
+      hasMoreImages,
+      total,
+    } = this.state;
+
+    const {
       handleSearchSubmit,
       openModal,
       loadMoreImages,
@@ -148,26 +112,28 @@ class App extends React.Component {
       handleImageLoad,
     } = this;
 
+    const totalPage = total / images.length;
+
     return (
       <Layout className="App">
         <Searchbar onSubmit={handleSearchSubmit} isSubmitting={loading} />
-        {error && <p>Something went wrong...</p>}
+        {error && showMessage('Something went wrong...')}
 
         <ImageGallery images={images} onImageClick={openModal} />
 
         {loading && (
-          <LoaderWrapper>
-            <ThreeDots color="#00BFFF" height={80} width={80} />
-          </LoaderWrapper>
+          <SpinnerWrapper>
+            <Spinner />
+          </SpinnerWrapper>
         )}
-        {!loading && images.length > 0 && hasMoreImages && (
+        {totalPage > 1 && !loading && images.length > 0 && hasMoreImages && (
           <Button onClick={loadMoreImages} />
         )}
 
         {showModal && (
           <Modal
             onClose={closeModal}
-            largeImageURL={largeImage.largeImageURL}
+            largeImage={largeImage}
             isLargeImageLoaded={isLargeImageLoaded}
             onImageLoad={handleImageLoad}
           />

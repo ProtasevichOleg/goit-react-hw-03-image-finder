@@ -1,14 +1,13 @@
-// Modal.jsx
-
-import React from 'react';
+import React, { Component } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
+
+import Spinner from 'components/Spinner';
 import { Overlay, ModalEl, LargeImageStyled } from './Modal.styled';
-import { ThreeDots } from 'react-loader-spinner';
 
 const modalRoot = document.querySelector('#modal-root');
 
-class Modal extends React.Component {
+class Modal extends Component {
   componentDidMount() {
     window.addEventListener('keydown', this.handleKeyDown);
   }
@@ -32,17 +31,19 @@ class Modal extends React.Component {
   };
 
   render() {
-    const { largeImageURL, isLargeImageLoaded, onImageLoad } = this.props;
+    const {
+      largeImage: { largeImageURL, tags },
+      isLargeImageLoaded,
+      onImageLoad,
+    } = this.props;
 
     return createPortal(
       <Overlay onClick={this.handleBackdropClick}>
         <ModalEl>
-          {!isLargeImageLoaded && (
-            <ThreeDots color="#00BFFF" height={80} width={80} />
-          )}
+          {!isLargeImageLoaded && <Spinner />}
           <LargeImageStyled
             src={largeImageURL}
-            alt=""
+            alt={`Image of ${tags}`}
             onLoad={onImageLoad}
             isLargeImageLoaded={isLargeImageLoaded}
           />
@@ -55,7 +56,10 @@ class Modal extends React.Component {
 
 Modal.propTypes = {
   onClose: PropTypes.func.isRequired,
-  largeImageURL: PropTypes.string.isRequired,
+  largeImage: PropTypes.shape({
+    largeImageURL: PropTypes.string.isRequired,
+    tags: PropTypes.string.isRequired,
+  }).isRequired,
   isLargeImageLoaded: PropTypes.bool.isRequired,
   onImageLoad: PropTypes.func.isRequired,
 };
